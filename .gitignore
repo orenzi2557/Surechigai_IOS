@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Xcode（個人の画面状態・ビルド成果物）
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+
+# Claude Code の個人設定
+.claude/settings.local.json

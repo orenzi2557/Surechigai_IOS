@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>登録した「マッチしない場所」（自宅・職場など）に入ったとき、アプリが裏にいてもすれ違いを止めるために使用します</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>同じネットワーク上の開発用サーバーと通信するために使用します</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- 開発用: ローカルの HTTP サーバー(http://IP:8000)へ接続するための例外。本番では削除すること。 -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
