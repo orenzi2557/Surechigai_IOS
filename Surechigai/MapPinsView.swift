@@ -5,7 +5,7 @@
 //  マップ画面。2つのレイヤーを切り替えて表示する:
 //   ・すれ違い … 実際にすれ違った地点（/encounters の緯度経度）
 //   ・ひとこと … 匿名マップピン（/map_pins。モックではローカル追加）
-//                ピンをタップすると詳細（GET /map_pins/{id}）を開き、編集(PATCH)・削除(DELETE)ができる
+//                ピンをタップすると詳細（GET /map_pins/{id}）を開き、自分のピン（is_mine）なら編集(PATCH)・削除(DELETE)ができる
 //
 
 import SwiftUI
@@ -18,9 +18,28 @@ struct MapPin: Identifiable, Hashable, Codable {
     let latitude: Double
     let longitude: Double
     let createdAt: Date
+    /// 自分が投稿したピンか（is_mine）。ピンは匿名なので投稿者は返らず、これで編集・削除できるかを判断する
+    let isMine: Bool
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+}
+
+extension MapPin {
+    private enum CodingKeys: String, CodingKey {
+        case id, message, latitude, longitude, createdAt, isMine
+    }
+
+    /// is_mine が無い古いサーバーでも読めるようにする（その場合は他人のピン扱い）
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        message = try c.decode(String.self, forKey: .message)
+        latitude = try c.decode(Double.self, forKey: .latitude)
+        longitude = try c.decode(Double.self, forKey: .longitude)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        isMine = try c.decodeIfPresent(Bool.self, forKey: .isMine) ?? false
     }
 }
 
@@ -204,7 +223,7 @@ struct MapPinsView: View {
                         } label: {
                             Image(systemName: "mappin.circle.fill")
                                 .font(.title)
-                                .foregroundStyle(Color.brandPrimary)
+                                .foregroundStyle(pin.isMine ? Color.brandAccent : Color.brandPrimary)
                                 .background(Circle().fill(.white).padding(3))
                         }
                         .buttonStyle(.plain)
@@ -310,9 +329,19 @@ struct MapPinsView: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.brandInk)
                             .lineLimit(2)
-                        Text(pin.createdAt.relativeString)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            if pin.isMine {
+                                Text("自分")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.brandAccent))
+                            }
+                            Text(pin.createdAt.relativeString)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .frame(width: 180, alignment: .leading)
                     .card(padding: 14)
@@ -474,7 +503,7 @@ enum PinChange {
 }
 
 /// ピン1件の詳細。GET /map_pins/{id} で最新を取り直し、PATCH / DELETE を行う。
-/// ピンは匿名で投稿者が返らないため、他人のピンの編集・削除はサーバーが 403 で断る。
+/// 編集・削除は自分のピン（is_mine）のときだけ出す。サーバーも他人のピンは 403 で断る。
 private struct PinDetailView: View {
     @EnvironmentObject private var api: APIClient
     @Environment(\.dismiss) private var dismiss
@@ -506,8 +535,12 @@ private struct PinDetailView: View {
                         ProgressView().padding(.top, 40)
                     } else if let pin {
                         infoCard(pin)
-                        editCard
-                        deleteButton
+                        if pin.isMine {
+                            editCard
+                            deleteButton
+                        } else {
+                            othersPinNote
+                        }
                     }
                     if let errorMessage {
                         Text(errorMessage)
@@ -530,7 +563,7 @@ private struct PinDetailView: View {
                 Button("削除する", role: .destructive) { Task { await delete() } }
                 Button("キャンセル", role: .cancel) {}
             } message: {
-                Text("自分が投稿したピンのみ削除できます。")
+                Text("削除すると元に戻せません。")
             }
             .task { await load() }
         }
@@ -553,7 +586,7 @@ private struct PinDetailView: View {
 
     private var editCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "編集（自分のピンのみ）", systemImage: "pencil")
+            SectionHeader(title: "編集", systemImage: "pencil")
             TextField("ひとこと", text: $draft, axis: .vertical)
                 .lineLimit(2...4)
                 .padding(12)
@@ -577,6 +610,14 @@ private struct PinDetailView: View {
             .disabled(!hasChanges || isWorking)
         }
         .card()
+    }
+
+    private var othersPinNote: some View {
+        Label("ほかの人のピンは編集・削除できません", systemImage: "lock")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
     }
 
     private var deleteButton: some View {

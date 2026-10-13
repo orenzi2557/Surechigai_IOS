@@ -346,7 +346,8 @@ final class APIClient: ObservableObject {
                 message: message,
                 latitude: latitude,
                 longitude: longitude,
-                createdAt: Date()
+                createdAt: Date(),
+                isMine: true
             )
             MockData.addPinLocally(pin)
             return pin

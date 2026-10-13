@@ -183,13 +183,17 @@ enum MockData {
         guard let i = mapPins.firstIndex(where: { $0.id == id }) else {
             throw APIError.server(status: 404, message: #"{"detail":"ピンが見つかりません"}"#)
         }
+        guard mapPins[i].isMine else {
+            throw APIError.server(status: 403, message: #"{"detail":"自分のピンのみ編集できます"}"#)
+        }
         let p = mapPins[i]
         let updated = MapPin(
             id: p.id,
             message: update.message ?? p.message,
             latitude: update.latitude ?? p.latitude,
             longitude: update.longitude ?? p.longitude,
-            createdAt: p.createdAt
+            createdAt: p.createdAt,
+            isMine: p.isMine
         )
         mapPins[i] = updated
         return updated
@@ -201,8 +205,8 @@ enum MockData {
 
     /// 匿名マップピン（モック）
     private(set) static var mapPins: [MapPin] = [
-        MapPin(id: 1, message: "ここでよくすれ違う☕️", latitude: 35.6586, longitude: 139.7454, createdAt: Date().addingTimeInterval(-7200)),
-        MapPin(id: 2, message: "朝のランニングコース🏃", latitude: 35.6705, longitude: 139.7027, createdAt: Date().addingTimeInterval(-18000)),
-        MapPin(id: 3, message: "お気に入りの本屋📚", latitude: 35.6897, longitude: 139.7006, createdAt: Date().addingTimeInterval(-86400)),
+        MapPin(id: 1, message: "ここでよくすれ違う☕️", latitude: 35.6586, longitude: 139.7454, createdAt: Date().addingTimeInterval(-7200), isMine: true),
+        MapPin(id: 2, message: "朝のランニングコース🏃", latitude: 35.6705, longitude: 139.7027, createdAt: Date().addingTimeInterval(-18000), isMine: false),
+        MapPin(id: 3, message: "お気に入りの本屋📚", latitude: 35.6897, longitude: 139.7006, createdAt: Date().addingTimeInterval(-86400), isMine: false),
     ]
 }
